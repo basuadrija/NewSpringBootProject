@@ -1,0 +1,38 @@
+name: Deploy spring code to Tomcat
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+  steps:
+    - uses: actions/checkout@v1
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: '17.0.10'
+    - name: Build with Maven
+      run: mvn clean install
+    - name: configure aws credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    - name: tomcat deploy
+      uses: fifsky/ssh-action@master
+      with:
+          command: |
+             rm -rf /opt/tomcat/webapps/RuptamsBlog.war
+             cp /target/RuptamsBlog.war /opt/tomcat/webapps
+             cd /opt/tomcat/bin
+             ./shutdown.sh
+             ./startup.sh
+          host: ${{ secrets.HOST }}
+          user: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
